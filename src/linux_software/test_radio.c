@@ -61,10 +61,15 @@ void print_benchmark(volatile unsigned int *periph_base)
     float throughput=0; 
     // please insert your code here for calculate the actual throughput in Mbytes/second
     // how much data was transferred? How long did it take?
-    unsigned int bytes_transferred = 0; // change obviously
-    float time_spent = 1; // change obviously
-    printf("You transferred %f bytes of data in %f seconds\n",bytes_transferred,time_spent);
-    printf("Measured Transfer throughput = %f Mbytes/sec\n",throughput);
+    
+    // each transaction transfers four bytes, thus the number of bytes transferred after
+    // 2048 iterations = 2048 * 4
+    // one period = 1/125e6 = 8 ns
+    unsigned int bytes_transferred = 2048 * 4;
+    float time_spent = (stop_time-start_time)/((float)125e6); // change obviously
+    throughput = bytes_transferred / time_spent;
+    printf("You transferred %d bytes of data in %f seconds\n",bytes_transferred,time_spent);
+    printf("Measured Transfer throughput = %f Mbytes/sec\n",throughput/1e6);
 }
 
 int main()
