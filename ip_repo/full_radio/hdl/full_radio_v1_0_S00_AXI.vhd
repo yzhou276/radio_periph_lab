@@ -86,6 +86,10 @@ end full_radio_v1_0_S00_AXI;
 
 architecture arch_imp of full_radio_v1_0_S00_AXI is
 
+    
+
+
+
 	-- AXI4LITE signals
 	signal axi_awaddr	: std_logic_vector(C_S_AXI_ADDR_WIDTH-1 downto 0);
 	signal axi_awready	: std_logic;
@@ -118,17 +122,96 @@ architecture arch_imp of full_radio_v1_0_S00_AXI is
 	signal reg_data_out	:std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
 	signal byte_index	: integer;
 	signal aw_en	: std_logic;
+	
+	
+	---- clock counter 
+	signal slv_reg3_cnt	:	unsigned(C_S_AXI_DATA_WIDTH-1 downto 0);
+	signal slv_reg3_r	:	std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
 
-COMPONENT dds_compiler_0
-  PORT (
-    aclk : IN STD_LOGIC;
-    aresetn : IN STD_LOGIC;
-    s_axis_phase_tvalid : IN STD_LOGIC;
-    s_axis_phase_tdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-    m_axis_data_tvalid : OUT STD_LOGIC;
-    m_axis_data_tdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0)
-  );
+	------------------------------------
+	------- Component Declaration ------
+	
+	COMPONENT dds_adc
+	PORT (
+		aclk : IN STD_LOGIC;
+		aresetn : IN STD_LOGIC;
+		s_axis_phase_tvalid : IN STD_LOGIC;
+		s_axis_phase_tdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+		m_axis_data_tvalid : OUT STD_LOGIC;
+		m_axis_data_tdata : OUT STD_LOGIC_VECTOR(15 DOWNTO 0) 
+	);
     END COMPONENT;
+	
+	signal dds_adc_tvalid	:	std_logic;
+	signal dds_adc_tdata	: 	std_logic_vector(15 downto 0);
+	signal adc_real_img 	: 	std_logic_vector(31 downto 0);
+	
+	COMPONENT dds_tuner
+	PORT (
+		aclk : IN STD_LOGIC;
+		aresetn : IN STD_LOGIC;
+		s_axis_phase_tvalid : IN STD_LOGIC;
+		s_axis_phase_tdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+		m_axis_data_tvalid : OUT STD_LOGIC;
+		m_axis_data_tdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0) 
+	);
+    END COMPONENT;
+
+	signal dds_tuner_tvalid	:	std_logic;
+	signal dds_tuner_tdata	: 	std_logic_vector(31 downto 0);
+	
+	COMPONENT mixer
+	PORT (
+		aclk : IN STD_LOGIC;
+		s_axis_a_tvalid : IN STD_LOGIC;
+		s_axis_a_tdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+		s_axis_b_tvalid : IN STD_LOGIC;
+		s_axis_b_tdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+		m_axis_dout_tvalid : OUT STD_LOGIC;
+		m_axis_dout_tdata : OUT STD_LOGIC_VECTOR(79 DOWNTO 0) 
+	);
+	END COMPONENT;
+
+	signal mixer_tvalid	:	std_logic;
+	signal mixer_tdata	:	std_logic_vector(79 downto 0);
+	
+	COMPONENT first_stage_fir
+	PORT (
+		aclk : IN STD_LOGIC;
+		s_axis_data_tvalid : IN STD_LOGIC;
+		s_axis_data_tready : OUT STD_LOGIC;
+		s_axis_data_tdata : IN STD_LOGIC_VECTOR(39 DOWNTO 0);
+		m_axis_data_tvalid : OUT STD_LOGIC;
+		m_axis_data_tready : IN STD_LOGIC;
+		m_axis_data_tdata : OUT STD_LOGIC_VECTOR(39 DOWNTO 0) 
+	);
+	END COMPONENT;
+
+	COMPONENT second_stage_fir
+	PORT (
+		aclk : IN STD_LOGIC;
+		s_axis_data_tvalid : IN STD_LOGIC;
+		s_axis_data_tready : OUT STD_LOGIC;
+		s_axis_data_tdata : IN STD_LOGIC_VECTOR(39 DOWNTO 0);
+		m_axis_data_tvalid : OUT STD_LOGIC;
+		m_axis_data_tdata : OUT STD_LOGIC_VECTOR(39 DOWNTO 0) 
+	);
+	END COMPONENT;
+	
+	signal fir_1_real_tready	:	std_logic;
+	signal fir_1_real_tvalid	: 	std_logic;
+	signal fir_1_real_tdata		: 	std_logic_vector(39 downto 0);
+	signal fir_0_real_tvalid	:   std_logic;
+	signal fir_0_real_tdata		: 	std_logic_vector(39 downto 0);
+
+	signal fir_1_img_tready		:	std_logic;
+	signal fir_1_img_tvalid		: 	std_logic;
+	signal fir_1_img_tdata		: 	std_logic_vector(39 downto 0);
+	signal fir_0_img_tvalid		:   std_logic;
+	signal fir_0_img_tdata		: 	std_logic_vector(39 downto 0);
+
+
+	signal	sdr_rstn	:	std_logic;
 
 begin
 	-- I/O Connections assignments
@@ -367,7 +450,7 @@ begin
 	      when b"00" =>
 	        reg_data_out <= slv_reg0;
 	      when b"01" =>
-	        reg_data_out <= x"DEADBEEF";
+	        reg_data_out <= slv_reg1;
 	      when b"10" =>
 	        reg_data_out <= slv_reg2;
 	      when b"11" =>
@@ -397,18 +480,101 @@ begin
 
 
 	-- Add user logic here
+	sdr_rstn	<=	not slv_reg2(0);
 
-your_instance_name : dds_compiler_0
-  PORT MAP (
-    aclk => s_axi_aclk,
-    aresetn => '1',
-    s_axis_phase_tvalid => '1',
-    s_axis_phase_tdata => slv_reg0,
-    m_axis_data_tvalid => m_axis_tvalid,
-    m_axis_data_tdata => m_axis_tdata
-  );
+	dds_adc_inst: dds_adc
+	port map (
+	  aclk                => S_AXI_ACLK,
+	  aresetn             => sdr_rstn,
+	  s_axis_phase_tvalid => '1',
+	  s_axis_phase_tdata  => slv_reg0,
+	  m_axis_data_tvalid  => dds_adc_tvalid,
+	  m_axis_data_tdata   => dds_adc_tdata
+	);
 
+	adc_real_img	<= 	X"0000" & dds_adc_tdata;
 
+	dds_tuner_inst: dds_tuner
+	port map (
+	  aclk                => S_AXI_ACLK,
+	  aresetn             => sdr_rstn,
+	  s_axis_phase_tvalid => '1',
+	  s_axis_phase_tdata  => slv_reg1,
+	  m_axis_data_tvalid  => dds_tuner_tvalid,
+	  m_axis_data_tdata   => dds_tuner_tdata
+	);
+	
+	mixer_inst: mixer
+	port map (
+	  aclk               => S_AXI_ACLK,
+	  s_axis_a_tvalid    => dds_adc_tvalid,
+	  s_axis_a_tdata     => adc_real_img,
+	  s_axis_b_tvalid    => dds_tuner_tvalid,
+	  s_axis_b_tdata     => dds_tuner_tdata,
+	  m_axis_dout_tvalid => mixer_tvalid,
+	  m_axis_dout_tdata  => mixer_tdata
+	);
+
+	-- real
+	fir_0_real: first_stage_fir
+	port map (
+	  aclk               => S_AXI_ACLK,
+	  s_axis_data_tvalid => mixer_tvalid,
+	  s_axis_data_tready => open,
+	  s_axis_data_tdata  => mixer_tdata(39 downto 0),
+	  m_axis_data_tvalid => fir_0_real_tvalid,
+	  m_axis_data_tready => fir_1_real_tready,
+	  m_axis_data_tdata  => fir_0_real_tdata
+	);
+
+	fir_1_real: second_stage_fir
+	port map (
+	  aclk               => S_AXI_ACLK,
+	  s_axis_data_tvalid => fir_0_real_tvalid,
+	  s_axis_data_tready => fir_1_real_tready,
+	  s_axis_data_tdata  => fir_0_real_tdata,
+	  m_axis_data_tvalid => fir_1_real_tvalid,
+	  m_axis_data_tdata  => fir_1_real_tdata
+	);
+
+	-- imagine
+	fir_0_img: first_stage_fir
+	port map (
+	  aclk               => S_AXI_ACLK,
+	  s_axis_data_tvalid => mixer_tvalid,
+	  s_axis_data_tready => open,
+	  s_axis_data_tdata  => mixer_tdata(79 downto 40),
+	  m_axis_data_tvalid => fir_0_img_tvalid,
+	  m_axis_data_tready => fir_1_img_tready,
+	  m_axis_data_tdata  => fir_0_img_tdata
+	);
+
+	fir_1_img: second_stage_fir
+	port map (
+	  aclk               => S_AXI_ACLK,
+	  s_axis_data_tvalid => fir_0_img_tvalid,
+	  s_axis_data_tready => fir_1_img_tready,
+	  s_axis_data_tdata  => fir_0_img_tdata,
+	  m_axis_data_tvalid => fir_1_img_tvalid,
+	  m_axis_data_tdata  => fir_1_img_tdata
+	);
+
+	m_axis_tvalid	<= 	fir_1_real_tvalid and fir_1_img_tvalid;
+	m_axis_tdata	<=  fir_1_img_tdata(28 downto 13) & fir_1_real_tdata(28 downto 13);
+
+	process (S_AXI_ACLK)
+	begin
+	  if rising_edge(S_AXI_ACLK) then 
+	    if S_AXI_ARESETN = '0' then
+			slv_reg3_cnt 	<= (others => '0');
+	    else
+			slv_reg3_cnt	<= slv_reg3_cnt + 1;
+	    end if;
+	  end if;                   
+	end process; 
+
+	slv_reg3_r	<= std_logic_vector(slv_reg3_cnt);
 	-- User logic ends
+
 
 end arch_imp;
