@@ -2,9 +2,10 @@
   "schema": "xilinx.com:schema:json_instance:1.0",
   "ip_inst": {
     "xci_name": "second_stage_fir",
+    "cell_name": "full_radio_v1_0_S00_AXI_inst/fir_1_real",
     "component_reference": "xilinx.com:ip:fir_compiler:7.2",
     "ip_revision": "23",
-    "gen_directory": "../../../../../../../../jhu/en742/lab10/radio_periph_lab/vivado/radio_periph_lab.tmp/full_radio_v1_0_project/full_radio_v1_0_project.gen/sources_1/ip/second_stage_fir",
+    "gen_directory": "../../../../../../../../../jhu/en742/lab10/clean_up_repo/radio_periph_lab/vivado/radio_periph_lab.tmp/full_radio_v1_0_project/full_radio_v1_0_project.gen/sources_1/ip/second_stage_fir",
     "parameters": {
       "component_parameters": {
         "Component_Name": [ { "value": "second_stage_fir", "resolve_type": "user", "usage": "all" } ],
@@ -178,7 +179,7 @@
         "IPCONTEXT": [ { "value": "IP_Flow" } ],
         "IPREVISION": [ { "value": "23" } ],
         "MANAGED": [ { "value": "TRUE" } ],
-        "OUTPUTDIR": [ { "value": "../../../../../../../../jhu/en742/lab10/radio_periph_lab/vivado/radio_periph_lab.tmp/full_radio_v1_0_project/full_radio_v1_0_project.gen/sources_1/ip/second_stage_fir" } ],
+        "OUTPUTDIR": [ { "value": "../../../../../../../../../jhu/en742/lab10/clean_up_repo/radio_periph_lab/vivado/radio_periph_lab.tmp/full_radio_v1_0_project/full_radio_v1_0_project.gen/sources_1/ip/second_stage_fir" } ],
         "SELECTEDSIMMODEL": [ { "value": "" } ],
         "SHAREDDIR": [ { "value": "." } ],
         "SWVERSION": [ { "value": "2024.2" } ],

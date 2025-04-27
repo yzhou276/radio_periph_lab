@@ -559,7 +559,7 @@ begin
 	  m_axis_data_tdata  => fir_1_img_tdata
 	);
 
-	m_axis_tvalid	<= 	fir_1_real_tvalid and fir_1_img_tvalid;
+	m_axis_tvalid	<= 	fir_1_real_tvalid and fir_1_img_tvalid and slv_reg2(1);
 	m_axis_tdata	<=  fir_1_img_tdata(28 downto 13) & fir_1_real_tdata(28 downto 13);
 
 	process (S_AXI_ACLK)
